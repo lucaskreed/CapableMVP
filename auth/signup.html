@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Join Capable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../assets/css/auth.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../assets/js/supabase-config.js"></script>
+  <script src="../assets/js/auth.js" defer></script>
+</head>
+<body data-auth-page="signup">
+  <div class="form-card">
+    <div class="progress-track">
+      <div class="progress-fill" id="progress"></div>
+    </div>
+
+    <div class="step active" id="step1">
+      <h1>Welcome</h1>
+      <p>Tell us who you are to get started.</p>
+
+      <label>I am a</label>
+      <div class="role-select">
+        <button class="role-btn active" id="role-client" type="button">Client</button>
+        <button class="role-btn" id="role-coach" type="button">Coach</button>
+      </div>
+
+      <div class="field"><label>First Name</label><input type="text" id="fname" placeholder="Jane"></div>
+      <div class="field"><label>Last Name</label><input type="text" id="lname" placeholder="Doe"></div>
+      <button id="next1" type="button" disabled>Continue</button>
+    </div>
+
+    <div class="step" id="step2">
+      <h1>Security</h1>
+      <p>Choose your preferred signup method.</p>
+
+      <button class="google-btn" id="google-signup-btn" type="button">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"> Continue with Google
+      </button>
+
+      <div class="divider">or use email</div>
+
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="email" placeholder="jane@example.com">
+        <span class="error-text" id="emailError">This email is already registered.</span>
+      </div>
+      <div class="field"><label>Password</label><input type="password" id="pass" placeholder="8+ characters"></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="conf" placeholder="Repeat password"></div>
+
+      <div class="actions">
+        <button class="alt" id="back-to-step1" type="button">Back</button>
+        <button id="next2" type="button" disabled>Continue</button>
+      </div>
+    </div>
+
+    <div class="step" id="step3">
+      <h1>Verification</h1>
+      <p>Confirm your details to continue.</p>
+
+      <div class="field" id="invite-field">
+        <label>Invite Code</label>
+        <input type="text" id="invite" placeholder="ABC-123 (Optional)" maxlength="7">
+        <span class="error-text" id="inviteError">This code doesn't exist. Check with your coach.</span>
+      </div>
+
+      <div class="field">
+        <label>Date of Birth</label>
+        <input type="date" id="dob">
+        <span class="error-text" id="ageError">You must be at least 13 years old.</span>
+      </div>
+
+      <label class="agreement">
+        <input type="checkbox" id="terms">
+        <span>I agree to the Terms of Service and Privacy Policy</span>
+      </label>
+
+      <div class="actions">
+        <button class="alt" id="back3" type="button">Back</button>
+        <button id="submit" type="button" disabled>Complete Setup</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

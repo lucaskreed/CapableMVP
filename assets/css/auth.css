@@ -1,0 +1,321 @@
+/*
+  auth.css
+  Shared auth styles for:
+  - auth/login.html
+  - auth/signup.html
+  - auth/forgot-password.html
+  - auth/update-password.html
+
+  Shared base styles are defined first.
+  Page-specific differences are controlled by body[data-auth-page="..."].
+*/
+
+:root {
+  --primary: #000;
+  --link-blue: #0052ff;
+  --error: #ff4d4d;
+  --success: #00c853;
+  --bg: #fffdfa;
+  --input-bg: #fff;
+  --text-main: #1a1a1a;
+  --text-muted: rgba(0, 0, 0, 0.5);
+  --border: rgba(125, 125, 125, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e0e11;
+    --primary: #fff;
+    --input-bg: #1a1a1f;
+    --text-main: #fff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background-color: var(--bg);
+  color: var(--text-main);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.form-card {
+  background: var(--bg);
+  border-radius: 24px;
+  padding: 3rem 2rem;
+  width: 92%;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border);
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
+}
+
+p {
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.field {
+  margin-bottom: 1.2rem;
+}
+
+label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  opacity: 0.8;
+  user-select: none;
+}
+
+input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-size: 16px;
+  background: var(--input-bg);
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input:focus {
+  border-color: var(--primary);
+}
+
+button {
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 14px;
+  background: var(--primary);
+  color: var(--bg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+button:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.google-btn {
+  width: 100%;
+  background: #fff;
+  color: #000;
+  border: 1px solid var(--border);
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  transition: background 0.2s;
+}
+
+.google-btn:hover {
+  background: #f9f9f9;
+}
+
+.google-btn img {
+  width: 18px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+
+.divider:not(:empty)::before {
+  margin-right: 1em;
+}
+
+.divider:not(:empty)::after {
+  margin-left: 1em;
+}
+
+.footer-link {
+  margin-top: 1.5rem;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.footer-link a {
+  color: var(--link-blue);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.error-text {
+  color: var(--error);
+  font-size: 12px;
+  margin-top: 6px;
+  display: none;
+  font-weight: 500;
+}
+
+/* login, forgot, update */
+body[data-auth-page="login"] .form-card,
+body[data-auth-page="forgot"] .form-card,
+body[data-auth-page="update"] .form-card {
+  max-width: 420px;
+  text-align: center;
+}
+
+body[data-auth-page="login"] .field,
+body[data-auth-page="forgot"] .field,
+body[data-auth-page="update"] .field {
+  text-align: left;
+}
+
+body[data-auth-page="login"] button,
+body[data-auth-page="forgot"] button,
+body[data-auth-page="update"] button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+body[data-auth-page="login"] .divider {
+  margin: 1.5rem 0;
+}
+
+body[data-auth-page="login"] .error-text,
+body[data-auth-page="forgot"] .error-text,
+body[data-auth-page="update"] .error-text {
+  text-align: left;
+}
+
+/* signup */
+body[data-auth-page="signup"] .form-card {
+  max-width: 500px;
+}
+
+body[data-auth-page="signup"] h1,
+body[data-auth-page="signup"] p {
+  text-align: center;
+}
+
+.progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 33.33%;
+  background: var(--primary);
+  transition: width 0.4s ease;
+}
+
+.role-select {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.role-btn {
+  flex: 1;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-size: 14px;
+  padding: 12px;
+}
+
+.role-btn.active {
+  background: var(--primary);
+  color: var(--bg);
+  border-color: var(--primary);
+}
+
+.agreement {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  margin: 1.5rem 0;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.agreement input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 1rem;
+}
+
+body[data-auth-page="signup"] button {
+  flex: 1;
+}
+
+button.alt {
+  background: none;
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
+.step {
+  display: none;
+}
+
+.step.active {
+  display: block;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

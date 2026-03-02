@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | Capable</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/supabase-config.js"></script>
+    <script src="../assets/js/dashboard.js" defer></script>
+</head>
+<body>
+    <nav class="sidebar">
+        <div>
+            <h2>Capable</h2>
+            <div class="profile-section">
+                <div class="badge" id="user-role">...</div>
+                <div id="user-name">...</div>
+            </div>
+        </div>
+        <button class="btn-outline" id="signout-btn" type="button">Sign Out</button>
+    </nav>
+
+    <main class="main-content">
+        <h1 id="greeting">Loading...</h1>
+        <p class="subtitle" id="view-subtitle">Fetching your profile details.</p>
+        <div class="grid" id="dashboard-grid"></div>
+    </main>
+</body>
+</html>

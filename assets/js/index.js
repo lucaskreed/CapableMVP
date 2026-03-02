@@ -1,28 +1,7 @@
-/* Sticky nav */
-const navEl = document.getElementById("nav");
-if (navEl) {
-  window.addEventListener(
-    "scroll",
-    () => {
-      navEl.classList.toggle("scrolled", window.scrollY > 40);
-    },
-    { passive: true }
-  );
-}
-
-/* Smooth scroll */
-document.querySelectorAll('a[href^="#"]').forEach((a) => {
-  a.addEventListener("click", (e) => {
-    const target = document.querySelector(a.getAttribute("href"));
-    if (target) {
-      e.preventDefault();
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  });
-});
-
 /* Audience switcher */
 function setAudience(type) {
+  if (!document.body) return;
+
   const isCoach = type === "coach";
   document.body.classList.toggle("coach-mode", isCoach);
 
@@ -69,5 +48,40 @@ function bindPricingEvents() {
   });
 }
 
-bindPricingEvents();
-setAudience("individual");
+function bindStickyNav() {
+  const navEl = document.getElementById("nav");
+  if (!navEl) return;
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      navEl.classList.toggle("scrolled", window.scrollY > 40);
+    },
+    { passive: true }
+  );
+}
+
+function bindSmoothScroll() {
+  document.querySelectorAll('a[href^="#"]').forEach((a) => {
+    a.addEventListener("click", (e) => {
+      const target = document.querySelector(a.getAttribute("href"));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+}
+
+function initMarketingPage() {
+  bindStickyNav();
+  bindSmoothScroll();
+  bindPricingEvents();
+  setAudience("individual");
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initMarketingPage);
+} else {
+  initMarketingPage();
+}

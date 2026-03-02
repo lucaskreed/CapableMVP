@@ -1,0 +1,9 @@
+{
+  "name": "auth-app",
+  "version": "1.0.0",
+  "description": "Static HTML/CSS/JavaScript application with Supabase authentication",
+  "type": "module",
+  "scripts": {
+    "build": "echo 'Static site - no build needed'"
+  }
+}

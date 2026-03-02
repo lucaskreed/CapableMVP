@@ -1,5 +1,5 @@
 const ROUTES = {
-  marketingIndex: "../marketing/index.html",
+  marketingIndex: "/",
 };
 
 const DASHBOARD_TEXT = {
@@ -378,3 +378,4 @@ function bindDashboardEvents() {
 
 bindDashboardEvents();
 init();
+

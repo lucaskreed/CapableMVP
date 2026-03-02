@@ -1,25 +1,25 @@
 /*
   Auth script shared by:
-  - auth/login.html
-  - auth/signup.html
-  - auth/forgot-password.html
-  - auth/update-password.html
+  - /login/
+  - /signup/
+  - /forgot-password/
+  - /update-password/
 
   Pages opt into behavior using: <body data-auth-page="...">
 */
 
 const ROUTES = {
-  dashboardRelative: "../app/dashboard.html",
-  updatePasswordPage: "update-password.html",
-  loginPage: "login.html",
-  signupPage: "signup.html",
-  forgotPasswordPage: "forgot-password.html",
+  dashboardRelative: "/dashboard/",
+  updatePasswordPage: "/update-password/",
+  loginPage: "/login/",
+  signupPage: "/signup/",
+  forgotPasswordPage: "/forgot-password/",
 };
 
 const ORIGIN_ROUTES = {
-  dashboardAbsolute: "/app/dashboard.html",
-  signupFlowAbsolute: "/auth/signup.html?flow=signup",
-  updatePasswordAbsolute: "/auth/update-password.html",
+  dashboardAbsolute: "/dashboard/",
+  signupFlowAbsolute: "/signup/?flow=signup",
+  updatePasswordAbsolute: "/update-password/",
 };
 
 const SIGNUP_STORAGE_KEYS = {
@@ -528,3 +528,4 @@ window.addEventListener("load", async () => {
   if (page === AUTH_PAGE.forgot) bindForgotEvents();
   if (page === AUTH_PAGE.update) bindUpdateEvents();
 });
+

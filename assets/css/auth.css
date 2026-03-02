@@ -1,10 +1,10 @@
 /*
   auth.css
   Shared auth styles for:
-  - auth/login.html
-  - auth/signup.html
-  - auth/forgot-password.html
-  - auth/update-password.html
+  - /login/
+  - /signup/
+  - /forgot-password/
+  - /update-password/
 
   Shared base styles are defined first.
   Page-specific differences are controlled by body[data-auth-page="..."].

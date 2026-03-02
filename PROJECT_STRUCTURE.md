@@ -10,15 +10,22 @@
 
 ## Routing Conventions
 
-- Marketing pages link to auth pages via `../auth/...`.
-- Auth pages redirect to app pages via `../app/...` or `/app/...` for OAuth redirects.
-- App pages route unauthenticated users back to `../marketing/index.html`.
+- Canonical public routes are folder-based:
+  - `/` (home)
+  - `/features/`
+  - `/login/`
+  - `/signup/`
+  - `/forgot-password/`
+  - `/update-password/`
+  - `/dashboard/`
+- Legacy `.html` files under `marketing/`, `auth/`, and `app/` are redirect stubs for backward compatibility.
+- Use absolute app routes in JS constants (for example `/dashboard/`) to avoid path-depth issues.
 
 ## Asset Conventions
 
-- HTML files in subfolders reference shared assets with `../assets/...`.
+- Root page uses `assets/...`; subfolder pages use `../assets/...` or absolute `/assets/...`.
 - Keep page-specific CSS in `assets/css/` with names matching page intent:
-  - `marketing.css` shared styles for `marketing/index.html` and `marketing/features.html`
+  - `marketing.css` shared styles for `/` and `/features/`
   - `auth.css` shared auth styles for login/signup/reset/update
   - `dashboard.css` app dashboard styles
 
@@ -45,7 +52,7 @@
   - Add only page-specific selectors/logic that cannot be shared.
 - If you change auth flow:
   - Touch `assets/js/auth.js` first.
-  - Keep redirects consistent with `/app/dashboard.html` and `/auth/...` paths.
+  - Keep redirects consistent with `/dashboard/` and auth folder routes (for example `/login/`).
 - If you change marketing layout:
   - Touch `assets/css/marketing.css` first.
   - Keep shared tokens/components near the top and page-specific sections near the bottom.

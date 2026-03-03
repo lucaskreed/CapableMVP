@@ -25,6 +25,8 @@ function setAudience(type) {
   document.title = isCoach
     ? "CAPABLE - Coaching Platform for Serious Trainers"
     : "CAPABLE - Track Your Health & Fitness Progress";
+
+  setPricingTab(isCoach ? "pro" : "free");
 }
 
 /* Pricing tab */
@@ -35,16 +37,19 @@ function setPricingTab(tab) {
 
 function bindPricingEvents() {
   document.getElementById("pt-free")?.addEventListener("click", () => {
-    setPricingTab("free");
+    setAudience("individual");
   });
 
   document.getElementById("pt-pro")?.addEventListener("click", () => {
-    setPricingTab("pro");
     setAudience("coach");
   });
 
   document.getElementById("coach-pricing-btn")?.addEventListener("click", () => {
     setAudience("coach");
+  });
+
+  document.getElementById("athlete-pricing-btn")?.addEventListener("click", () => {
+    setAudience("individual");
   });
 }
 
@@ -73,10 +78,84 @@ function bindSmoothScroll() {
   });
 }
 
+function bindHeroPromptTyping() {
+  const individualEl = document.getElementById("hero-individual-prompt-text");
+  const coachEl = document.getElementById("hero-coach-prompt-text");
+  if (!individualEl || !coachEl) return;
+
+  const typeSpeedMs = 34;
+  const deleteSpeedMs = 18;
+  const holdMs = 1500;
+
+  const tracks = [
+    {
+      el: individualEl,
+      prompts: [
+        "Build me a weekly plan using my sleep, workouts, and nutrition trends.",
+        "Show me what habits are helping me recover faster this month.",
+        "Summarize my week and tell me where to focus next.",
+      ],
+      phaseOffsetMs: 0,
+    },
+    {
+      el: coachEl,
+      prompts: [
+        "Summarize this week for all clients and flag who needs intervention.",
+        "Identify clients trending off-plan and draft outreach messages.",
+        "Generate weekly progress updates I can send to every client.",
+      ],
+      phaseOffsetMs: 800,
+    },
+  ];
+
+  tracks.forEach((track) => {
+    track.el.textContent = "";
+    let promptIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    let timer;
+
+    const tick = () => {
+      const full = track.prompts[promptIndex];
+
+      if (!isDeleting) {
+        charIndex = Math.min(charIndex + 1, full.length);
+        track.el.textContent = full.slice(0, charIndex);
+
+        if (charIndex >= full.length) {
+          isDeleting = true;
+          timer = setTimeout(tick, holdMs);
+          return;
+        }
+
+        timer = setTimeout(tick, typeSpeedMs);
+        return;
+      }
+
+      charIndex = Math.max(charIndex - 1, 0);
+      track.el.textContent = full.slice(0, charIndex);
+
+      if (charIndex <= 0) {
+        isDeleting = false;
+        promptIndex = (promptIndex + 1) % track.prompts.length;
+        timer = setTimeout(tick, 280);
+        return;
+      }
+
+      timer = setTimeout(tick, deleteSpeedMs);
+    };
+
+    setTimeout(tick, track.phaseOffsetMs);
+
+    window.addEventListener("beforeunload", () => clearTimeout(timer), { once: true });
+  });
+}
+
 function initMarketingPage() {
   bindStickyNav();
   bindSmoothScroll();
   bindPricingEvents();
+  bindHeroPromptTyping();
   setAudience("individual");
 }
 

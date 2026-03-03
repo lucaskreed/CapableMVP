@@ -1,5 +1,8 @@
 const ROUTES = {
   marketingIndex: "/",
+  loginPage: "/login/",
+  signupPage: "/signup/",
+  signupFlow: "/signup/?flow=signup",
 };
 
 const DASHBOARD_TEXT = {
@@ -40,6 +43,47 @@ function byId(id) {
   return document.getElementById(id);
 }
 
+function normalizeInviteCode(value) {
+  return (value || "").replace("-", "").toUpperCase();
+}
+
+function normalizeUsername(value) {
+  return (value || "").trim().toLowerCase();
+}
+
+function profilePayloadFromAuthUser(user) {
+  const metadata = user?.user_metadata || {};
+  const role = metadata.role;
+  const firstName = (metadata.first_name || "").trim();
+  const lastName = (metadata.last_name || "").trim();
+  const birthday = metadata.birthday;
+  const username = normalizeUsername(metadata.username);
+
+  if (!role || !firstName || !lastName || !birthday || !username) return null;
+
+  const payload = {
+    id: user.id,
+    email: user.email,
+    role,
+    first_name: firstName,
+    last_name: lastName,
+    birthday,
+    username,
+  };
+
+  if (role === "coach") payload.coach_code = normalizeInviteCode(metadata.coach_code);
+  if (role === "client") payload.invite_code = normalizeInviteCode(metadata.invite_code) || null;
+
+  return payload;
+}
+
+function promptAuthEntry() {
+  const goToLogin = window.confirm(
+    "You need to be signed in to access the dashboard.\nPress OK to sign in, or Cancel to sign up."
+  );
+  window.location.href = goToLogin ? ROUTES.loginPage : ROUTES.signupPage;
+}
+
 function formatCoachCode(value) {
   return value.substring(0, 3) + "-" + value.substring(3, 6);
 }
@@ -56,11 +100,38 @@ async function init() {
   } = await _supabase.auth.getUser();
 
   if (!user) {
-    window.location.href = ROUTES.marketingIndex;
+    promptAuthEntry();
     return;
   }
 
-  const { data: profile } = await _supabase.from("profiles").select("*").eq("id", user.id).single();
+  let { data: profile } = await _supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if (!profile) {
+    const payload = profilePayloadFromAuthUser(user);
+    if (payload) {
+      const { error: profileCreateError } = await _supabase.from("profiles").upsert(payload);
+      if (profileCreateError) {
+        await _supabase.auth.signOut();
+        alert("Your account is missing profile setup. Please complete signup to continue.");
+        window.location.href = ROUTES.signupPage;
+        return;
+      }
+
+      const result = await _supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      profile = result.data;
+    }
+  }
+
+  if (!profile) {
+    await _supabase.auth.signOut();
+    alert("Your account is missing profile setup. Please complete signup to continue.");
+    window.location.href = ROUTES.signupPage;
+    return;
+  }
+
+  if (!profile.birthday || !profile.role || !profile.first_name || !profile.last_name) {
+    window.location.href = ROUTES.signupFlow;
+    return;
+  }
 
   byId("user-name").innerText = `${profile.first_name} ${profile.last_name}`;
   byId("user-role").innerText = profile.role;
@@ -308,7 +379,7 @@ async function linkCoach() {
 
 async function signOut() {
   await _supabase.auth.signOut();
-  window.location.href = ROUTES.marketingIndex;
+  window.location.href = ROUTES.loginPage;
 }
 
 function bindDashboardEvents() {

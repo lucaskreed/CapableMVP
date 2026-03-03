@@ -27,6 +27,9 @@
 
       <div class="field"><label>First Name</label><input type="text" id="fname" placeholder="Jane"></div>
       <div class="field"><label>Last Name</label><input type="text" id="lname" placeholder="Doe"></div>
+      <div class="field"><label>Username</label><input type="text" id="username" placeholder="jane.doe" maxlength="30"></div>
+      <span class="error-text" id="nameError"></span>
+      <span class="error-text" id="usernameError"></span>
       <button id="next1" type="button" disabled>Continue</button>
     </div>
 
@@ -47,6 +50,7 @@
       </div>
       <div class="field"><label>Password</label><input type="password" id="pass" placeholder="8+ characters"></div>
       <div class="field"><label>Confirm Password</label><input type="password" id="conf" placeholder="Repeat password"></div>
+      <span class="error-text" id="passwordError"></span>
 
       <div class="actions">
         <button class="alt" id="back-to-step1" type="button">Back</button>

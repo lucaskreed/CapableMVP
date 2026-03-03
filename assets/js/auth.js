@@ -19,12 +19,14 @@ const ROUTES = {
 const ORIGIN_ROUTES = {
   dashboardAbsolute: "/dashboard/",
   signupFlowAbsolute: "/signup/?flow=signup",
+  loginAbsolute: "/login/?oauth=google",
   updatePasswordAbsolute: "/update-password/",
 };
 
 const SIGNUP_STORAGE_KEYS = {
   firstName: "temp_fname",
   lastName: "temp_lname",
+  username: "temp_username",
   role: "temp_role",
 };
 
@@ -66,6 +68,27 @@ const AUTH_TEXT = {
   passwordUpdated: "Password updated! You can now log in with your email and password.",
   inviteCodeNotFound: "This code doesn't exist. Check with your coach.",
   rateLimitKeyword: "rate limit",
+  missingProfileAfterGoogle:
+    'No Capable account was found for this Google email. Please <a href="/signup/" style="color: var(--link-blue); text-decoration: underline;">sign up first</a>.',
+  invalidDateOfBirth: "Please enter a valid date of birth.",
+  unrealisticDateOfBirth: "Please enter a realistic date of birth.",
+  invalidFirstName: "Please enter a valid first name.",
+  invalidLastName: "Please enter a valid last name.",
+  weakPassword:
+    "Use at least 8 characters with uppercase, lowercase, and a number. Avoid using your name or email in your password.",
+  emailNotConfirmedKeyword: "email not confirmed",
+  resendVerificationSent: "Verification email sent. Please check your inbox and spam folder.",
+  usernameTaken: "That username is not available.",
+  usernameChecking: "Checking username...",
+};
+
+const VALIDATION_RULES = {
+  minimumAge: 13,
+  maximumAge: 110,
+  minimumNameLength: 2,
+  maximumNameLength: 40,
+  usernameMinLength: 3,
+  usernameMaxLength: 30,
 };
 
 /* ---------- Shared Helpers ---------- */
@@ -107,6 +130,131 @@ function currentAuthPage() {
   return document.body.dataset.authPage || "";
 }
 
+function normalizeUsername(value) {
+  return (value || "").trim().toLowerCase();
+}
+
+function looksLikeEmail(value) {
+  return /@.+\./.test(value);
+}
+
+function validateName(value, label) {
+  const cleaned = value.trim();
+  const formatRegex = /^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/;
+
+  if (!cleaned) return `Please enter your ${label}.`;
+  if (looksLikeEmail(cleaned)) return `${label[0].toUpperCase() + label.slice(1)} cannot be an email address.`;
+  if (cleaned.length < VALIDATION_RULES.minimumNameLength) {
+    return `${label[0].toUpperCase() + label.slice(1)} must be at least ${VALIDATION_RULES.minimumNameLength} characters.`;
+  }
+  if (cleaned.length > VALIDATION_RULES.maximumNameLength) {
+    return `${label[0].toUpperCase() + label.slice(1)} must be ${VALIDATION_RULES.maximumNameLength} characters or less.`;
+  }
+  if (!formatRegex.test(cleaned)) {
+    return `${label[0].toUpperCase() + label.slice(1)} contains unsupported characters.`;
+  }
+  return "";
+}
+
+function validatePasswordStrength(password, email, firstName, lastName) {
+  const lower = password.toLowerCase();
+  const emailLocalPart = (email || "").split("@")[0].toLowerCase();
+  const first = (firstName || "").trim().toLowerCase();
+  const last = (lastName || "").trim().toLowerCase();
+
+  if (password.length < 8) return AUTH_TEXT.weakPassword;
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) return AUTH_TEXT.weakPassword;
+  if (emailLocalPart && emailLocalPart.length > 2 && lower.includes(emailLocalPart)) return AUTH_TEXT.weakPassword;
+  if (first && first.length > 2 && lower.includes(first)) return AUTH_TEXT.weakPassword;
+  if (last && last.length > 2 && lower.includes(last)) return AUTH_TEXT.weakPassword;
+
+  return "";
+}
+
+function getDateOfBirthError(dateValue) {
+  if (!dateValue) return "Please add your date of birth.";
+
+  const age = getAgeFromDate(dateValue);
+  if (Number.isNaN(age) || age < 0) return AUTH_TEXT.invalidDateOfBirth;
+  if (age < VALIDATION_RULES.minimumAge) return "You must be at least 13 years old.";
+  if (age > VALIDATION_RULES.maximumAge) return AUTH_TEXT.unrealisticDateOfBirth;
+
+  return "";
+}
+
+async function fetchProfileByUserId(userId) {
+  const { data, error } = await _supabase
+    .from("profiles")
+    .select("id, email, role, first_name, last_name, birthday, username")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+function isProfileComplete(profile) {
+  return Boolean(profile && profile.role && profile.first_name && profile.last_name && profile.birthday);
+}
+
+function normalizeInviteCode(value) {
+  return (value || "").replace("-", "").toUpperCase();
+}
+
+function validateUsername(username) {
+  const value = normalizeUsername(username);
+  if (!value) return "Please choose a username.";
+  if (value.length < VALIDATION_RULES.usernameMinLength || value.length > VALIDATION_RULES.usernameMaxLength) {
+    return `Username must be ${VALIDATION_RULES.usernameMinLength}-${VALIDATION_RULES.usernameMaxLength} characters.`;
+  }
+  if (!/^[a-z0-9._]+$/.test(value)) {
+    return "Username can only use lowercase letters, numbers, periods, and underscores.";
+  }
+  if (/^[._]/.test(value) || /[._]$/.test(value) || /\.\./.test(value)) {
+    return "Username cannot start or end with . or _, and cannot contain consecutive periods.";
+  }
+  return "";
+}
+
+function profilePayloadFromAuthUser(user) {
+  const metadata = user?.user_metadata || {};
+  const role = metadata.role;
+  const firstName = (metadata.first_name || "").trim();
+  const lastName = (metadata.last_name || "").trim();
+  const birthday = metadata.birthday;
+  const username = normalizeUsername(metadata.username);
+
+  if (!role || !firstName || !lastName || !birthday || !username) return null;
+
+  const payload = {
+    id: user.id,
+    email: user.email,
+    role,
+    first_name: firstName,
+    last_name: lastName,
+    birthday,
+    username,
+  };
+
+  if (role === USER_ROLE.coach) payload.coach_code = normalizeInviteCode(metadata.coach_code) || generateCoachCode();
+  if (role === USER_ROLE.client) payload.invite_code = normalizeInviteCode(metadata.invite_code) || null;
+
+  return payload;
+}
+
+async function ensureProfileExistsForAuthUser(user) {
+  const existing = await fetchProfileByUserId(user.id);
+  if (existing) return existing;
+
+  const payload = profilePayloadFromAuthUser(user);
+  if (!payload) return null;
+
+  const { error } = await _supabase.from("profiles").upsert(payload);
+  if (error) throw error;
+
+  return fetchProfileByUserId(user.id);
+}
+
 /* ---------- Login ---------- */
 function hideError() {
   hideMessage(byId("auth-error"));
@@ -115,10 +263,25 @@ function hideError() {
 async function signInWithGoogle() {
   const { error } = await _supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: window.location.origin + ORIGIN_ROUTES.dashboardAbsolute },
+    options: { redirectTo: window.location.origin + ORIGIN_ROUTES.loginAbsolute },
   });
 
   if (error) showMessage(byId("auth-error"), error.message, "error");
+}
+
+async function resendVerificationEmail(email) {
+  const { error } = await _supabase.auth.resend({
+    type: "signup",
+    email,
+    options: { emailRedirectTo: window.location.origin + ROUTES.loginPage },
+  });
+
+  if (error) {
+    showMessage(byId("auth-error"), error.message, "error");
+    return;
+  }
+
+  showMessage(byId("auth-error"), AUTH_TEXT.resendVerificationSent, "success");
 }
 
 async function signIn() {
@@ -174,6 +337,15 @@ async function signIn() {
       return;
     }
 
+    if (err.message && err.message.toLowerCase().includes(AUTH_TEXT.emailNotConfirmedKeyword)) {
+      showMessage(
+        errorEl,
+        `Email not confirmed. <a href="#" class="js-resend-verification" data-email="${email}" style="color: var(--link-blue); font-weight:bold;">Resend verification email</a>.`,
+        "error"
+      );
+      return;
+    }
+
     showMessage(errorEl, err.message || AUTH_TEXT.genericSignInError, "error");
   }
 }
@@ -193,7 +365,21 @@ async function initLoginPage() {
     data: { session },
   } = await _supabase.auth.getSession();
 
-  if (session) window.location.href = ROUTES.dashboardRelative;
+  if (!session) return;
+
+  const profile = await ensureProfileExistsForAuthUser(session.user);
+  if (!profile) {
+    await _supabase.auth.signOut();
+    showMessage(byId("auth-error"), AUTH_TEXT.missingProfileAfterGoogle, "error");
+    return;
+  }
+
+  if (isProfileComplete(profile)) {
+    window.location.href = ROUTES.dashboardRelative;
+    return;
+  }
+
+  window.location.href = ORIGIN_ROUTES.signupFlowAbsolute;
 }
 
 /* ---------- Forgot Password ---------- */
@@ -257,6 +443,9 @@ async function updatePassword() {
 /* ---------- Signup ---------- */
 let authMethod = "email";
 let userRole = USER_ROLE.client;
+let inviteValidationToken = 0;
+let usernameValidationToken = 0;
+let usernameDebounceTimer;
 
 function setRole(role) {
   userRole = role;
@@ -265,6 +454,8 @@ function setRole(role) {
 
   const inviteField = byId("invite-field");
   if (inviteField) inviteField.style.display = role === USER_ROLE.coach ? "none" : "block";
+  if (role === USER_ROLE.coach) hideMessage(byId("inviteError"));
+  v3();
 }
 
 function nav(step) {
@@ -275,7 +466,21 @@ function nav(step) {
 }
 
 function v1() {
-  byId("next1").disabled = !byId("fname").value.trim() || !byId("lname").value.trim();
+  const firstNameError = validateName(byId("fname").value, "first name");
+  const lastNameError = validateName(byId("lname").value, "last name");
+  const usernameError = validateUsername(byId("username")?.value || "");
+  const usernameTaken = byId("usernameError").dataset.taken === "true";
+  const message = firstNameError || lastNameError;
+
+  if (message) showMessage(byId("nameError"), message, "error");
+  else hideMessage(byId("nameError"));
+
+  if (usernameError) {
+    byId("usernameError").dataset.taken = "false";
+    showMessage(byId("usernameError"), usernameError, "error");
+  }
+
+  byId("next1").disabled = Boolean(message || usernameError || usernameTaken);
 }
 
 function v2() {
@@ -284,26 +489,33 @@ function v2() {
   const pass = byId("pass").value;
   const conf = byId("conf").value;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  byId("next2").disabled = !(emailRegex.test(email) && pass.length >= 8 && pass === conf);
+  const passwordError = validatePasswordStrength(pass, email, byId("fname").value, byId("lname").value);
+
+  if (passwordError) showMessage(byId("passwordError"), passwordError, "error");
+  else hideMessage(byId("passwordError"));
+
+  byId("next2").disabled = !(emailRegex.test(email) && !passwordError && pass === conf);
 }
 
 function v3() {
-  const age = getAgeFromDate(byId("dob").value);
+  const dateOfBirthError = getDateOfBirthError(byId("dob").value);
   const termsAccepted = byId("terms").checked;
   const invite = byId("invite").value;
   const inviteErrorVisible = byId("inviteError").style.display === "block";
 
-  byId("ageError").style.display = byId("dob").value && age < 13 ? "block" : "none";
+  if (dateOfBirthError) showMessage(byId("ageError"), dateOfBirthError, "error");
+  else hideMessage(byId("ageError"));
 
-  const inviteValid =
-    userRole === "coach" || (invite.length === 7 && !inviteErrorVisible) || invite.length === 0;
+  const inviteValid = userRole === USER_ROLE.coach || (invite.length === 7 && !inviteErrorVisible) || invite.length === 0;
+  const dateValid = !dateOfBirthError;
 
-  byId("submit").disabled = !(age >= 13 && termsAccepted && inviteValid);
+  byId("submit").disabled = !(dateValid && termsAccepted && inviteValid);
 }
 
 async function goGoogle() {
   localStorage.setItem(SIGNUP_STORAGE_KEYS.firstName, byId("fname").value);
   localStorage.setItem(SIGNUP_STORAGE_KEYS.lastName, byId("lname").value);
+  localStorage.setItem(SIGNUP_STORAGE_KEYS.username, normalizeUsername(byId("username").value));
   localStorage.setItem(SIGNUP_STORAGE_KEYS.role, userRole);
 
   const signupUrl = window.location.origin + ORIGIN_ROUTES.signupFlowAbsolute;
@@ -340,26 +552,121 @@ function generateCoachCode() {
   return result;
 }
 
+function validateUsernameAvailability() {
+  const usernameEl = byId("username");
+  const usernameErrorEl = byId("usernameError");
+  if (!usernameEl || !usernameErrorEl) return;
+
+  const username = normalizeUsername(usernameEl.value);
+  usernameEl.value = username;
+
+  const formatError = validateUsername(username);
+  if (formatError) {
+    usernameErrorEl.dataset.taken = "false";
+    showMessage(usernameErrorEl, formatError, "error");
+    v1();
+    return;
+  }
+
+  clearTimeout(usernameDebounceTimer);
+  usernameErrorEl.dataset.taken = "false";
+  showMessage(usernameErrorEl, AUTH_TEXT.usernameChecking, "success");
+  byId("next1").disabled = true;
+
+  usernameDebounceTimer = setTimeout(async () => {
+    const currentToken = ++usernameValidationToken;
+    const { data, error } = await _supabase.from("profiles").select("id").eq("username", username).maybeSingle();
+    if (currentToken !== usernameValidationToken) return;
+
+    if (error) {
+      usernameErrorEl.dataset.taken = "false";
+      showMessage(usernameErrorEl, "Unable to validate username right now. Try again.", "error");
+      v1();
+      return;
+    }
+
+    if (data) {
+      usernameErrorEl.dataset.taken = "true";
+      showMessage(usernameErrorEl, AUTH_TEXT.usernameTaken, "error");
+      v1();
+      return;
+    }
+
+    usernameErrorEl.dataset.taken = "false";
+    hideMessage(usernameErrorEl);
+    v1();
+  }, 250);
+}
+
 async function finish() {
   const btn = byId("submit");
   const email = byId("email").value.trim();
   const pass = byId("pass").value;
   const inviteInput = byId("invite").value.trim();
   const rateError = byId("ageError");
+  const firstName = byId("fname").value.trim();
+  const lastName = byId("lname").value.trim();
+  const birthday = byId("dob").value;
+  const username = normalizeUsername(byId("username").value);
+
+  const firstNameError = validateName(firstName, "first name");
+  const lastNameError = validateName(lastName, "last name");
+  const dateOfBirthError = getDateOfBirthError(birthday);
+
+  if (firstNameError || lastNameError) {
+    showMessage(byId("nameError"), firstNameError || lastNameError, "error");
+    return;
+  }
+
+  const usernameError = validateUsername(username);
+  if (usernameError) {
+    showMessage(byId("usernameError"), usernameError, "error");
+    return;
+  }
+
+  const usernameTaken = byId("usernameError").dataset.taken === "true";
+  if (usernameTaken) {
+    showMessage(byId("usernameError"), AUTH_TEXT.usernameTaken, "error");
+    return;
+  }
+
+  const { data: existingUsername } = await _supabase
+    .from("profiles")
+    .select("id")
+    .eq("username", username)
+    .maybeSingle();
+  if (existingUsername) {
+    byId("usernameError").dataset.taken = "true";
+    showMessage(byId("usernameError"), AUTH_TEXT.usernameTaken, "error");
+    return;
+  }
+
+  if (dateOfBirthError) {
+    showMessage(rateError, dateOfBirthError, "error");
+    return;
+  }
 
   setButtonState(btn, BUTTON_LABELS.creatingAccount, true);
 
   try {
     if (authMethod === "email") {
-      const { error } = await _supabase.auth.signUp({
+      const passwordError = validatePasswordStrength(pass, email, firstName, lastName);
+      if (passwordError) {
+        showMessage(byId("passwordError"), passwordError, "error");
+        setButtonState(btn, BUTTON_LABELS.completeSetup, false);
+        return;
+      }
+
+      const { data: signupData, error } = await _supabase.auth.signUp({
         email,
         password: pass,
         options: {
           data: {
-            first_name: byId("fname").value,
-            last_name: byId("lname").value,
+            first_name: firstName,
+            last_name: lastName,
             role: userRole,
-            birthday: byId("dob").value,
+            username,
+            birthday,
             invite_code: userRole === USER_ROLE.client ? inviteInput.replace("-", "").toUpperCase() : null,
             coach_code: userRole === USER_ROLE.coach ? generateCoachCode() : null,
           },
@@ -367,6 +674,9 @@ async function finish() {
       });
 
       if (error) throw error;
+      if (signupData?.session && signupData?.user) {
+        await ensureProfileExistsForAuthUser(signupData.user);
+      }
       window.location.href = `${ROUTES.loginPage}?signup=success`;
       return;
     }
@@ -379,9 +689,10 @@ async function finish() {
       id: user.id,
       email: user.email,
       role: userRole,
-      first_name: byId("fname").value || localStorage.getItem(SIGNUP_STORAGE_KEYS.firstName),
-      last_name: byId("lname").value || localStorage.getItem(SIGNUP_STORAGE_KEYS.lastName),
-      birthday: byId("dob").value,
+      first_name: firstName || localStorage.getItem(SIGNUP_STORAGE_KEYS.firstName),
+      last_name: lastName || localStorage.getItem(SIGNUP_STORAGE_KEYS.lastName),
+      username: username || localStorage.getItem(SIGNUP_STORAGE_KEYS.username),
+      birthday,
     };
 
     if (userRole === USER_ROLE.coach) profileData.coach_code = generateCoachCode();
@@ -410,19 +721,30 @@ async function finish() {
 async function formatAndValidateCode() {
   const input = byId("invite");
   const error = byId("inviteError");
-  const submitBtn = byId("submit");
+  const currentToken = ++inviteValidationToken;
 
   input.value = formatInviteCode(input.value);
+
+  if (userRole === USER_ROLE.coach || input.value.length === 0) {
+    hideMessage(error);
+    v3();
+    return;
+  }
+
   if (input.value.length !== 7) {
     hideMessage(error);
+    v3();
     return;
   }
 
   const cleanCode = input.value.replace("-", "");
-  const { data } = await _supabase.from("profiles").select("id").eq("coach_code", cleanCode).single();
+  const { data } = await _supabase.from("profiles").select("id").eq("coach_code", cleanCode).maybeSingle();
+
+  if (currentToken !== inviteValidationToken) return;
+
   if (!data) {
     showMessage(error, AUTH_TEXT.inviteCodeNotFound, "error");
-    submitBtn.disabled = true;
+    v3();
     return;
   }
 
@@ -438,22 +760,26 @@ async function initSignupPage() {
   const params = new URLSearchParams(window.location.search);
   if (!session) return;
 
-  const { data: profile } = await _supabase.from("profiles").select("birthday").eq("id", session.user.id).single();
-  if (profile && profile.birthday) {
+  const profile = await fetchProfileByUserId(session.user.id);
+  if (isProfileComplete(profile)) {
     window.location.href = ROUTES.dashboardRelative;
     return;
   }
 
   if (params.get("flow") === "signup") {
-    authMethod = "google";
-    userRole = localStorage.getItem(SIGNUP_STORAGE_KEYS.role) || USER_ROLE.client;
-    setRole(userRole);
-    byId("back3").style.display = "none";
-    nav(3);
-    return;
+    history.replaceState(null, "", ORIGIN_ROUTES.signupFlowAbsolute);
   }
 
-  window.location.href = ROUTES.dashboardRelative;
+  authMethod = "google";
+  userRole = localStorage.getItem(SIGNUP_STORAGE_KEYS.role) || USER_ROLE.client;
+  setRole(userRole);
+  byId("fname").value = localStorage.getItem(SIGNUP_STORAGE_KEYS.firstName) || byId("fname").value;
+  byId("lname").value = localStorage.getItem(SIGNUP_STORAGE_KEYS.lastName) || byId("lname").value;
+  byId("username").value = localStorage.getItem(SIGNUP_STORAGE_KEYS.username) || byId("username").value;
+  byId("back3").style.display = "none";
+  nav(3);
+  v1();
+  v3();
 }
 
 /* ---------- Event Wiring ---------- */
@@ -484,6 +810,7 @@ function bindSignupEvents() {
 
   byId("fname")?.addEventListener("input", v1);
   byId("lname")?.addEventListener("input", v1);
+  byId("username")?.addEventListener("input", validateUsernameAvailability);
   byId("email")?.addEventListener("input", v2);
   byId("pass")?.addEventListener("input", v2);
   byId("conf")?.addEventListener("input", v2);
@@ -505,6 +832,18 @@ function bindDelegatedAuthLinks() {
     if (googleSignupLink) {
       event.preventDefault();
       goGoogle();
+      return;
+    }
+
+    const resendVerificationLink = event.target.closest(".js-resend-verification");
+    if (resendVerificationLink) {
+      event.preventDefault();
+      const email = resendVerificationLink.dataset.email || byId("login-email")?.value?.trim() || "";
+      if (!email) {
+        showMessage(byId("auth-error"), "Enter your email to resend verification.", "error");
+        return;
+      }
+      resendVerificationEmail(email);
     }
   });
 }

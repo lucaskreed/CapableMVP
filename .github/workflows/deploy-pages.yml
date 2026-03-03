@@ -25,13 +25,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare publish directory
+        run: |
+          mkdir -p dist
+          cp -R assets app auth dashboard features forgot-password integrations login marketing pricing resources signup update-password dist/
+          cp index.html CNAME dist/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: ./dist
 
       - name: Deploy to GitHub Pages
         id: deployment

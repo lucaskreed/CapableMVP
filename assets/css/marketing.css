@@ -43,7 +43,12 @@
 
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
 body {
   font-family: 'Geist', 'Helvetica Neue', sans-serif;
@@ -53,6 +58,7 @@ body {
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  overflow-x: clip;
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
@@ -124,6 +130,10 @@ nav.scrolled {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 24px;
+}
+
+.nav-inner > * {
+  min-width: 0;
 }
 
 .nav-logo {
@@ -1173,6 +1183,7 @@ body.coach-mode .coach-mode-badge {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  overflow: clip;
   padding: 130px 24px 88px;
   background:
     radial-gradient(1120px 500px at 50% -120px, hsla(var(--hero-hue), 95%, 68%, 0.5) 0%, hsla(var(--hero-hue), 95%, 68%, 0.2) 38%, rgba(255,255,255,0) 74%),

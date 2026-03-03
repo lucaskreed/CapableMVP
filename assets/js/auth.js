@@ -68,8 +68,6 @@ const AUTH_TEXT = {
   passwordUpdated: "Password updated! You can now log in with your email and password.",
   inviteCodeNotFound: "This code doesn't exist. Check with your coach.",
   rateLimitKeyword: "rate limit",
-  missingProfileAfterGoogle:
-    'No Capable account was found for this Google email. Please <a href="/signup/" style="color: var(--link-blue); text-decoration: underline;">sign up first</a>.',
   invalidDateOfBirth: "Please enter a valid date of birth.",
   unrealisticDateOfBirth: "Please enter a realistic date of birth.",
   invalidFirstName: "Please enter a valid first name.",
@@ -80,6 +78,7 @@ const AUTH_TEXT = {
   resendVerificationSent: "Verification email sent. Please check your inbox and spam folder.",
   usernameTaken: "That username is not available.",
   usernameChecking: "Checking username...",
+  noProfileAfterGoogle: "No Capable account was found for this Google email. Please sign up first.",
 };
 
 const VALIDATION_RULES = {
@@ -100,7 +99,33 @@ function showMessage(element, message, type) {
   if (!element) return;
   element.style.display = "block";
   element.style.color = type === "success" ? "var(--success)" : "var(--error)";
-  element.innerHTML = message;
+  element.textContent = String(message || "");
+}
+
+function showRichMessage(element, type, segments) {
+  if (!element) return;
+  element.style.display = "block";
+  element.style.color = type === "success" ? "var(--success)" : "var(--error)";
+  element.replaceChildren();
+
+  segments.forEach((segment) => {
+    if (typeof segment === "string") {
+      element.append(document.createTextNode(segment));
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.textContent = segment.text || "";
+    link.href = segment.href || "#";
+    if (segment.className) link.className = segment.className;
+    if (segment.style) link.style.cssText = segment.style;
+    if (segment.dataset) {
+      Object.entries(segment.dataset).forEach(([key, value]) => {
+        link.dataset[key] = value;
+      });
+    }
+    element.append(link);
+  });
 }
 
 function hideMessage(element) {
@@ -302,10 +327,13 @@ async function signIn() {
     const { data: profile } = await _supabase.from("profiles").select("email").eq("email", email).maybeSingle();
 
     if (!profile) {
-      showMessage(
+      showRichMessage(
         errorEl,
-        `No account found with this email. <a href="${ROUTES.signupPage}" style="color: var(--link-blue); text-decoration: underline;">Create one?</a>`,
-        "error"
+        "error",
+        [
+          "No account found with this email. ",
+          { text: "Create one?", href: ROUTES.signupPage, style: "color: var(--link-blue); text-decoration: underline;" },
+        ]
       );
       setButtonState(btn, BUTTON_LABELS.signIn, false);
       return;
@@ -322,26 +350,45 @@ async function signIn() {
       const { data: profile } = await _supabase.from("profiles").select("id").eq("email", email).maybeSingle();
 
       if (profile) {
-        showMessage(
+        showRichMessage(
           errorEl,
-          `Incorrect password. If you usually use Google, <a href="#" class="js-google-signin" style="color: var(--link-blue); font-weight:bold;">Sign in with Google</a> or <a href="${ROUTES.forgotPasswordPage}" style="color: var(--link-blue);">Reset Password</a> to create one.`,
-          "error"
+          "error",
+          [
+            "Incorrect password. If you usually use Google, ",
+            { text: "Sign in with Google", href: "#", className: "js-google-signin", style: "color: var(--link-blue); font-weight: bold;" },
+            " or ",
+            { text: "Reset Password", href: ROUTES.forgotPasswordPage, style: "color: var(--link-blue);" },
+            " to create one.",
+          ]
         );
       } else {
-        showMessage(
+        showRichMessage(
           errorEl,
-          `No account found. <a href="${ROUTES.signupPage}" style="color: var(--link-blue); font-weight:bold;">Sign up here</a>`,
-          "error"
+          "error",
+          [
+            "No account found. ",
+            { text: "Sign up here", href: ROUTES.signupPage, style: "color: var(--link-blue); font-weight: bold;" },
+          ]
         );
       }
       return;
     }
 
     if (err.message && err.message.toLowerCase().includes(AUTH_TEXT.emailNotConfirmedKeyword)) {
-      showMessage(
+      showRichMessage(
         errorEl,
-        `Email not confirmed. <a href="#" class="js-resend-verification" data-email="${email}" style="color: var(--link-blue); font-weight:bold;">Resend verification email</a>.`,
-        "error"
+        "error",
+        [
+          "Email not confirmed. ",
+          {
+            text: "Resend verification email",
+            href: "#",
+            className: "js-resend-verification",
+            style: "color: var(--link-blue); font-weight: bold;",
+            dataset: { email },
+          },
+          ".",
+        ]
       );
       return;
     }
@@ -370,7 +417,11 @@ async function initLoginPage() {
   const profile = await ensureProfileExistsForAuthUser(session.user);
   if (!profile) {
     await _supabase.auth.signOut();
-    showMessage(byId("auth-error"), AUTH_TEXT.missingProfileAfterGoogle, "error");
+    showRichMessage(byId("auth-error"), "error", [
+      AUTH_TEXT.noProfileAfterGoogle + " ",
+      { text: "Sign up first", href: ROUTES.signupPage, style: "color: var(--link-blue); text-decoration: underline;" },
+      ".",
+    ]);
     return;
   }
 
@@ -531,10 +582,10 @@ async function checkEmail() {
   const { data } = await _supabase.from("profiles").select("email").eq("email", email);
 
   if (data && data.length > 0) {
-    showMessage(
+    showRichMessage(
       errorSpan,
-      `This email is already taken. <a href="${ROUTES.loginPage}" style="color: var(--link-blue);">Login here</a>.`,
-      "error"
+      "error",
+      ["This email is already taken. ", { text: "Login here", href: ROUTES.loginPage, style: "color: var(--link-blue);" }, "."]
     );
     setButtonState(btn, BUTTON_LABELS.continue, false);
     return;
@@ -706,10 +757,18 @@ async function finish() {
     setButtonState(btn, BUTTON_LABELS.completeSetup, false);
 
     if ((e.message && e.message.includes(AUTH_TEXT.rateLimitKeyword)) || e.status === 429) {
-      showMessage(
+      showRichMessage(
         rateError,
-        'Too many attempts. <a href="#" class="js-google-signup" style="color: var(--link-blue); font-weight:bold; text-decoration:underline;">Sign up with Google instead?</a>',
-        "error"
+        "error",
+        [
+          "Too many attempts. ",
+          {
+            text: "Sign up with Google instead?",
+            href: "#",
+            className: "js-google-signup",
+            style: "color: var(--link-blue); font-weight: bold; text-decoration: underline;",
+          },
+        ]
       );
       return;
     }
